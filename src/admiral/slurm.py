@@ -2,7 +2,8 @@ import itertools
 import re
 import subprocess
 
-from admiral.jobmanagers import Job, Jobmanager, JobmanagerException, JobSubmissionException
+from admiral.jobmanagers import Job, Jobmanager
+from admiral.support import JobmanagerException, JobSubmissionException
 
 
 SLURM_TEMPLATE = \
@@ -17,6 +18,7 @@ SLURM_TEMPLATE = \
 
 {command}
 """
+
 
 class SLURM_Jobmanager(Jobmanager):
     @staticmethod
@@ -54,32 +56,6 @@ class SLURM_Job(Job):
 
         return job_id_match.group(1)
 
-    def _array_job_ids(self):
-        assert self.array is not None
-
-        start, end = self.array.split("-")
-        start = int(start)
-        end = int(end)
-
-        job_ids = ["{}_{}".format(self.job_id, i) for i in range(start, end+1)]
-
-        return job_ids
-
-    def _match_job_id(self, tomatch):
-        step_re = "{}_(\d+)$".format(self.job_id)
-        remainder_re = "{}_\[(.+)\]$".format(self.job_id)
-
-        step = re.match(step_re, tomatch)
-        if step is not None:
-            step_id = int(step.group(1))
-            return "step", step_id
-
-        remainder = re.match(remainder_re, tomatch)
-        if remainder is not None:
-            remainder = remainder.group(1)
-            return "remainder", remainder
-
-        return ("unknown",-1)
         
     def status(self):
         if self.job_id is None:
@@ -139,8 +115,32 @@ class SLURM_Job(Job):
             
         self._status = status
         
-        # if self._status is None:
-        #     raise JobmanagerException(
-        #         "Error getting job status - can't parse output '{}'".format(result))
-
         return status
+
+
+    def _array_job_ids(self):
+        assert self.array is not None
+
+        start, end = self.array.split("-")
+        start = int(start)
+        end = int(end)
+
+        job_ids = ["{}_{}".format(self.job_id, i) for i in range(start, end+1)]
+
+        return job_ids
+
+    def _match_job_id(self, tomatch):
+        step_re = "{}_(\d+)$".format(self.job_id)
+        remainder_re = "{}_\[(.+)\]$".format(self.job_id)
+
+        step = re.match(step_re, tomatch)
+        if step is not None:
+            step_id = int(step.group(1))
+            return "step", step_id
+
+        remainder = re.match(remainder_re, tomatch)
+        if remainder is not None:
+            remainder = remainder.group(1)
+            return "remainder", remainder
+
+        return ("unknown",-1)

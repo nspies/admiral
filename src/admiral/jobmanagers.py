@@ -7,32 +7,7 @@ import re
 import subprocess
 import time
 
-
-
-
-
-class abstractstatic(staticmethod):
-    __slots__ = ()
-    def __init__(self, function):
-        super(abstractstatic, self).__init__(function)
-        function.__isabstractmethod__ = True
-    __isabstractmethod__ = True
-
-    
-class JobmanagerException(Exception):
-    pass
-
-class JobSubmissionException(JobmanagerException):
-    pass
-
-
-def path_with_default(path, default=None):
-    if path is None:
-        if default is None:
-            default = os.getcwd()
-        path = default
-    return path
-
+from admiral import support
 
 
 def get_jobmanager(scheduler):
@@ -40,20 +15,22 @@ def get_jobmanager(scheduler):
         from admiral import slurm
         return slurm.SLURM_Jobmanager
 
-    raise JobmanagerException(
+    raise support.JobmanagerException(
         "Unknown scheduler: '{}'; currently only slurm is supported".format(scheduler))
+
+
     
 class Jobmanager(object):
     __metaclass__ = abc.ABCMeta
     
     def __init__(self, batch_dir=None, log_dir=None):
-        self.batch_dir = path_with_default(batch_dir)
-        self.log_dir = path_with_default(log_dir)
+        self.batch_dir = support.path_with_default(batch_dir)
+        self.log_dir = support.path_with_default(log_dir)
 
     def make_job(self, command, **kwdargs):
         return self.job_class()(self, command, **kwdargs)
 
-    @abstractstatic
+    @support.abstractstatic
     def job_class():
         pass
 
@@ -80,9 +57,11 @@ class Job(object):
         self.job_id = None
         self._status = None
 
+        
     @staticmethod
     def done_codes():
         return set(["completed", "canceled", "failed"])
+
     
     def run(self, tries=1, wait=30):
         batch_script, self.log_path = self.generate_batch_script()
@@ -100,7 +79,7 @@ class Job(object):
                     print(error_message + " ... trying again (try {}/{})".format(
                         i+1, tries))
                 else:
-                    raise JobSubmissionException(error_message)
+                    raise support.JobSubmissionException(error_message)
 
             time.sleep(cur_wait)
             cur_wait = min(cur_wait*2, wait)
@@ -116,35 +95,17 @@ class Job(object):
 
         return False
 
+    @abc.abstractmethod
     def status(self):
-        
         self._status = self.status()
         return self._status
-                
-    @abstractstatic
+
+        
+    @support.abstractstatic
     def template(self):
         pass
+
         
-    def _unique_path(self, base):
-        for i in range(1000):
-            if i == 0:
-                unique_label = ""
-            else:
-                unique_label = ".{}".format(i)
-                
-            batch_path = os.path.join(base, self.job_name+unique_label+".batch")
-            if not os.path.exists(batch_path):
-                return batch_path
-
-        raise JobmanagerException("please use a unique job_name!")
-
-    def _write_batch_script(self, batch_script):
-        batch_path = self._unique_path(self.jobmanager.batch_dir)
-
-        with open(batch_path, "w") as batch_file:
-            batch_file.write(batch_script)
-
-        return batch_path
         
     def generate_batch_script(self):
         log_path = self._unique_path(self.jobmanager.log_dir)
@@ -171,13 +132,35 @@ class Job(object):
 
         return batch_script, log_path
         
+    def _unique_path(self, base):
+        for i in range(1000):
+            if i == 0:
+                unique_label = ""
+            else:
+                unique_label = ".{}".format(i)
+                
+            batch_path = os.path.join(base, self.job_name+unique_label+".batch")
+            if not os.path.exists(batch_path):
+                return batch_path
 
+        raise support.JobmanagerException("please use a unique job_name!")
+
+    def _write_batch_script(self, batch_script):
+        batch_path = self._unique_path(self.jobmanager.batch_dir)
+
+        with open(batch_path, "w") as batch_file:
+            batch_file.write(batch_script)
+
+        return batch_path
+
+
+        
 def wait_for_jobs(jobs, timeout=-1, wait=0.5, tries=10, progress=False):
     t0 = time.time()
 
     jobmanagers = set(job.jobmanager for job in jobs)
     if len(jobmanagers) > 1:
-        raise JobmanagerException("Need to all be from the same jobmanager!")
+        raise support.JobmanagerException("Need to all be from the same jobmanager!")
     jobmanager = jobmanagers.pop()
     
     tried = 0
@@ -187,7 +170,6 @@ def wait_for_jobs(jobs, timeout=-1, wait=0.5, tries=10, progress=False):
             statuses = collections.Counter(
                 job.status() for job in jobs)
             
-            #statuses = jobmanager.status(jobs)
             if set(statuses).issubset(Job.done_codes()):
                 break
 

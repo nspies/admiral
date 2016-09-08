@@ -8,6 +8,7 @@ import sys
 class RunRemoteException(Exception):
     pass
 
+
 def _write_orders(job_dir, job_name, fn, args, kwdargs, overwrite):
     remote = {
         "function": fn,
@@ -75,10 +76,6 @@ def run_remote(fn, jobmanager, job_name, args=None, kwdargs=None,
                                  python=sys.executable,
                                  this=__file__)
 
-        print ""
-        print command
-        print ""
-
         array_command = None
         if array:
             array_command = "0-{}".format(len(args)-1)
@@ -95,7 +92,7 @@ if __name__ == "__main__":
 
     remote_instructions = pickle.load(open(remote_instructions_path))
 
-    print ">>>>>>", remote_instructions
+    #print ">>>>>>", remote_instructions
     function = remote_instructions["function"]
     args = remote_instructions["args"]
     kwdargs = remote_instructions["kwdargs"]
