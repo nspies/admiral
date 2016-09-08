@@ -2,7 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'admiral',
-    version = '0.1dev0',
+    description = "Simple python high-performance computing cluster batch submission",
+    version = '0.1dev1',
 
     author = "Noah Spies",
     url = "https://github.com/nspies/admiral",
