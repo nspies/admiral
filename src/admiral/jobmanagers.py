@@ -174,7 +174,7 @@ def wait_for_jobs(jobs, timeout=-1, wait=0.5, tries=10, progress=False):
                 break
 
             if progress:
-                print time.time()-t0, statuses
+                print(time.time()-t0, statuses)
 
         except subprocess.CalledProcessError:
             if tried < tries:

@@ -48,7 +48,7 @@ class SLURM_Job(Job):
                 process.stdout.read(), process.stderr.read())
             raise JobSubmissionException(error)
 
-        output = process.stdout.read()
+        output = process.stdout.read().decode()
         job_id_match = re.search(r"Submitted batch job (\d+)", output.strip())
         if job_id_match is None:
             raise JobSubmissionException(
@@ -74,6 +74,7 @@ class SLURM_Job(Job):
         progress = {}
         
         for line in result.splitlines():
+            line = line.decode()
             job_id, job_name, state, exit_code = line.strip().split()
 
             state = state.split()[0].replace("+","")
