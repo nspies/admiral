@@ -40,7 +40,7 @@ class Job(object):
     __metaclass__ = abc.ABCMeta
         
     def __init__(self, jobmanager, command, job_name="job", cpus=1, 
-                 mem="4g", time="1h", queue=None, array=None):
+                 mem="4g", time="1h", queue=None, array=None, depends=None):
         
         self.jobmanager = jobmanager
         
@@ -53,6 +53,8 @@ class Job(object):
         self.cpus = cpus
         self.mem = humanfriendly.parse_size(mem) # memory in bytes
         self.time = humanfriendly.parse_timespan(time) # time in seconds (float)
+
+        self.depends = depends
 
         self.job_id = None
         self._status = None
@@ -71,7 +73,8 @@ class Job(object):
         
         for i in range(tries):
             try:
-                self.job_id = self.submit_batch(self.batch_path, self.job_name, self.array)
+                self.job_id = self.submit_batch(
+                    self.batch_path, self.job_name, self.array, self.depends)
                 break
             except Exception as e:
                 error_message = "Error submitting job: '{}'".format(e)
@@ -105,7 +108,8 @@ class Job(object):
     def template(self):
         pass
 
-        
+    def extras(self):
+        return ""
         
     def generate_batch_script(self):
         log_path = self._unique_path(self.jobmanager.log_dir)
@@ -125,7 +129,8 @@ class Job(object):
             "hours": int(hours),
             "minutes": int(minutes),
             "seconds": int(seconds),
-            "command": self.command
+            "command": self.command,
+            "extras": self.extras()
             }
 
         batch_script = self.template().format(**args)

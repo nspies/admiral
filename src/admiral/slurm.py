@@ -15,6 +15,7 @@ SLURM_TEMPLATE = \
 #SBATCH --cpus-per-task={cpus}
 #SBATCH --mem={mem_mb}
 #SBATCH -t {days}-{hours}:{minutes}:{seconds}
+{extras}
 
 {command}
 """
@@ -33,11 +34,16 @@ class SLURM_Job(Job):
         return SLURM_TEMPLATE
 
     @staticmethod
-    def submit_batch(batch_path, job_name, array=None):
+    def submit_batch(batch_path, job_name, array=None, depends=None):
         array_command = ""
         if array is not None:
             array_command = "--array={} ".format(array)
-        command = "sbatch {}{}".format(array_command, batch_path)
+
+        extras = ""
+        if depends:
+            extras += "--dependency=afterok:{}".format(":".join(map(str, depends))) + " "
+
+        command = "sbatch {}{}{}".format(extras, array_command, batch_path)
         
         process = subprocess.Popen(
             command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -56,7 +62,7 @@ class SLURM_Job(Job):
 
         return job_id_match.group(1)
 
-        
+
     def status(self):
         if self.job_id is None:
             raise JobmanagerException("Must submit job first!")

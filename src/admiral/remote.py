@@ -44,7 +44,6 @@ def run_remote(fn, jobmanager, job_name, args=None, kwdargs=None,
                njobs=None, job_dir=None, overwrite=False, 
                tries=10, wait=30, **jobmanager_kwdargs):
    
-
     pythonpath = ":".join(sys.path)
 
     if job_dir is None:
