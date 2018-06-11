@@ -34,23 +34,25 @@ class SLURM_Job(Job):
         return SLURM_TEMPLATE
 
     @staticmethod
-    def submit_batch(batch_path, job_name, array=None, depends=None):
+    def submit_batch(batch_path, job_name, array=None, depends=None, dependency_type="afterok", verbose=True):
         array_command = ""
         if array is not None:
             array_command = "--array={} ".format(array)
 
         extras = ""
         if depends:
-            extras += "--dependency=afterok:{}".format(":".join(map(str, depends))) + " "
+            extras += "--dependency={}:{}".format(dependency_type, ":".join(map(str, depends))) + " "
 
         command = "sbatch {}{}{}".format(extras, array_command, batch_path)
-        
+        if verbose:
+            print("Launching command:'", command, "'")
+
         process = subprocess.Popen(
             command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         result = process.wait()
         if result != 0:
             error = "Error submitting job '{}'\n".format(job_name)
-            error = error + "stdout: '{}'\n stderr: '{}'".format(
+            error = error + " command: '{}'".format(command) + "\n stdout: '{}'\nstderr: '{}'".format(
                 process.stdout.read(), process.stderr.read())
             raise JobSubmissionException(error)
 
@@ -71,9 +73,13 @@ class SLURM_Job(Job):
             return self._status
 
         sacct_format = "JobID%50,JobName,State,ExitCode"
-        status_command = "sacct --noheader -o {} -j {}".format(
-            sacct_format, self.job_id)
 
+        # hack because apparently -j option looks back infinitely into the past
+        import datetime
+        long_ago = (datetime.date.today() - datetime.timedelta(days=14)).strftime("%Y-%m-%d")
+        status_command = "sacct --noheader -o {} -j {} --starttime {}".format(
+            sacct_format, self.job_id, long_ago)
+        
         result = subprocess.check_output(status_command, shell=True)
 
         status = None

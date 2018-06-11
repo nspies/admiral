@@ -5,6 +5,7 @@ import itertools
 import os
 import re
 import subprocess
+import sys
 import time
 
 from admiral import support
@@ -40,7 +41,7 @@ class Job(object):
     __metaclass__ = abc.ABCMeta
         
     def __init__(self, jobmanager, command, job_name="job", cpus=1, 
-                 mem="4g", time="1h", queue=None, array=None, depends=None):
+                 mem="4g", time="1h", queue=None, array=None, depends=None, dependency_type="afterok"):
         
         self.jobmanager = jobmanager
         
@@ -55,7 +56,8 @@ class Job(object):
         self.time = humanfriendly.parse_timespan(time) # time in seconds (float)
 
         self.depends = depends
-
+        self.dependency_type = dependency_type
+        
         self.job_id = None
         self._status = None
 
@@ -74,7 +76,7 @@ class Job(object):
         for i in range(tries):
             try:
                 self.job_id = self.submit_batch(
-                    self.batch_path, self.job_name, self.array, self.depends)
+                    self.batch_path, self.job_name, self.array, self.depends, self.dependency_type)
                 break
             except Exception as e:
                 error_message = "Error submitting job: '{}'".format(e)
@@ -153,6 +155,8 @@ class Job(object):
     def _write_batch_script(self, batch_script):
         batch_path = self._unique_path(self.jobmanager.batch_dir)
 
+        assert not os.path.exists(batch_path)
+        
         with open(batch_path, "w") as batch_file:
             batch_file.write(batch_script)
 
@@ -179,7 +183,7 @@ def wait_for_jobs(jobs, timeout=-1, wait=0.5, tries=10, progress=False):
                 break
 
             if progress:
-                print(time.time()-t0, statuses)
+                sys.stderr.write("\r{} {}".format(time.time()-t0, statuses))
 
         except subprocess.CalledProcessError:
             if tried < tries:
@@ -189,6 +193,9 @@ def wait_for_jobs(jobs, timeout=-1, wait=0.5, tries=10, progress=False):
         tried = 0
         time.sleep(wait)
 
+    if progress:
+        sys.stderr.write("\n")
+        
     statuses = [job.status() for job in jobs]
     success = set(statuses) == set(["completed"])
 

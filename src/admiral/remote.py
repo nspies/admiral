@@ -60,6 +60,8 @@ def run_remote(fn, jobmanager, job_name, args=None, kwdargs=None,
                
     if njobs is None:
         njobs = len(args)
+    assert njobs > 0
+    
     njobs = min(njobs, len(args))
 
     remote_instructions_paths = []
