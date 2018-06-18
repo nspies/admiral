@@ -49,6 +49,11 @@ def run_remote(fn, jobmanager, job_name, args=None, kwdargs=None,
     if job_dir is None:
         job_dir = jobmanager.batch_dir
 
+    ## Create job output directory if not present
+    try:
+        os.stat(job_dir)
+    except:
+        os.mkdir(job_dir)
     
     if kwdargs is None:
         kwdargs = [{}]*len(args)
