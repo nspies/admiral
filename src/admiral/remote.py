@@ -39,7 +39,14 @@ def _write_orders(job_dir, job_name, fn, orders, overwrite):
 
     return remote_instructions_path
 
-    
+
+def ensure_dir(directory):
+    try:
+        os.makedirs(directory)
+    except OSError as err:
+        if err.errno != errno.EEXIST:
+            raise
+
 def run_remote(fn, jobmanager, job_name, args=None, kwdargs=None,
                njobs=None, job_dir=None, overwrite=False, 
                tries=10, wait=30, **jobmanager_kwdargs):
@@ -50,10 +57,7 @@ def run_remote(fn, jobmanager, job_name, args=None, kwdargs=None,
         job_dir = jobmanager.batch_dir
 
     ## Create job output directory if not present
-    try:
-        os.stat(job_dir)
-    except:
-        os.mkdir(job_dir)
+    ensure_dir(job_dir)
     
     if kwdargs is None:
         kwdargs = [{}]*len(args)
